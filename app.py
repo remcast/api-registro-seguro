@@ -13,15 +13,43 @@ def get_db_connection():
 @app.route('/registro', methods=['POST'])
 def registro():
     data = request.get_json()
-    
-    # ---------------------------------------------------
-    # Aqui te toca a ti victor :p
-    # Aquí debes implementar:
-    # 1. Validaciones (Pass > 8 y < 10) -> Error 400
-    # 2. Verificar duplicados (Email) -> Error 409
-    # 3. Hash de contraseña con Bcrypt
-    # 4. Insertar en BD -> Success 201
-    # ---------------------------------------------------
+
+    try:
+        data = request.get_json()
+        email = data.get('email')
+        password = data.get('password')
+
+        # VALIDACIÓN 1: Datos presentes
+        if not email or not password:
+            return jsonify({"error": "Faltan datos"}), 400
+
+        # VALIDACIÓN 2: Longitud estricta (Mayor a 8 y Menor a 10)
+        # Esto significa que la contraseña SOLO puede tener 9 caracteres.
+        if not (8 < len(password) < 10):
+            return jsonify({"error": "Credenciales Invalidas: La contraseña debe ser mayor a 8 y menor a 10 caracteres"}), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # VALIDACIÓN 3: Duplicados
+        cursor.execute("SELECT id FROM usuarios WHERE email = ?", (email,))
+        if cursor.fetchone():
+            conn.close()
+            return jsonify({"error": "El usuario ya existe"}), 409
+
+        # HASHING: Cifrar contraseña
+        hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+
+        # INSERTAR: Guardar en BD
+        cursor.execute("INSERT INTO usuarios (email, password) VALUES (?, ?)", (email, hashed_password))
+        conn.commit()
+        conn.close()
+
+        return jsonify({"mensaje": "Usuario Registrado"}), 201
+
+    except Exception as e:
+        return jsonify({"error": f"Error del servidor: {str(e)}"}), 500
+
 
     return jsonify({"mensaje": "Endpoint creado. Falta implementar lógica."}), 200
 
