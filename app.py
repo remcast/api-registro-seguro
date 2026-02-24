@@ -99,6 +99,38 @@ def cambiar_contrasena():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+@app.route('/validar', methods=['POST'])
+def validar_usuario():
+    try:
+        data = request.get_json()
+        email = data.get('email')
+        password = data.get('password')
+
+        if not email or not password:
+            return jsonify({"error": "Faltan datos"}), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT password FROM usuarios WHERE email = ?", (email,))
+        usuario = cursor.fetchone()
+
+        if not usuario:
+            conn.close()
+            return jsonify({"error": "Usuario no encontrado"}), 404
+
+        hash_guardado = usuario[0]
+
+        if bcrypt.checkpw(password.encode('utf-8'), hash_guardado):
+            conn.close()
+            return jsonify({"mensaje": "Credenciales válidas"}), 200
+        else:
+            conn.close()
+            return jsonify({"error": "Credenciales inválidas"}), 401
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500  
 
 
 if __name__ == '__main__':
