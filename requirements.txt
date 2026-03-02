@@ -1,2 +1,4 @@
 Flask
 bcrypt
+PyJWT
+python-dotenv
