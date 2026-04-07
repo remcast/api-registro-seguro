@@ -17,6 +17,7 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
+# INFO "Nuevo usuario creado correctamente"
 @app.route('/registro', methods=['POST'])
 def registro():
     try:
@@ -36,9 +37,9 @@ def registro():
         if len(password) < 8 or len(password) > 10:
             return jsonify({"error": "La contraseña debe tener al menos 8 y no mayor a 10 caracteres"}), 400
 
-        conn = get_db_connection()
+        conn = get_db_connection() #CRTICAL "ERROR DEL SERVIDOR"
         cursor = conn.cursor()
-
+# WARNING "Registro fallido"
         cursor.execute("SELECT id FROM usuarios WHERE email = ?", (email,))
         if cursor.fetchone():
             conn.close()
@@ -57,7 +58,7 @@ def registro():
 
     except Exception as e:
         return jsonify({"error": f"Error del servidor: {str(e)}"}), 500
-
+# INFO "Actualizacion de contraseña"
 @app.route('/cambiar-contrasena', methods=['PUT'])
 def cambiar_contrasena():
     try:
@@ -99,7 +100,7 @@ def cambiar_contrasena():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
+# INFO "Validar logian"
 @app.route('/validar', methods=['POST'])
 def validar_usuario():
     try:
@@ -137,7 +138,7 @@ def validar_usuario():
             return jsonify({"mensaje": "Credenciales válidas", "token": token}), 200
         else:
             conn.close()
-            return jsonify({"error": "Credenciales inválidas"}), 401
+            return jsonify({"error": "Credenciales inválidas"}), 401 #WARNING "Fallo de login"
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -175,7 +176,7 @@ def comprar():
     precio_unitario = 150.0
 
     if not articulo or cantidad is None:
-        return jsonify({"error": "Faltan datos (articulo, cantidad)"}), 400
+        return jsonify({"error": "Faltan datos (articulo, cantidad)"}), 400 #WARNING "Compra denegada"
 
     if not isinstance(cantidad, int) or cantidad <= 0:
         return jsonify({"error": "La cantidad debe ser un número entero mayor a cero"}), 400
@@ -217,7 +218,7 @@ def publicar_articulo():
 
     patron_html = re.compile(r'<[^>]+>')
     if patron_html.search(titulo) or patron_html.search(contenido):
-        return jsonify({"error": "No se permiten etiquetas HTML por seguridad."}), 400
+        return jsonify({"error": "No se permiten etiquetas HTML por seguridad."}), 400 #ERROR(Seguridad)
 
     usuario = request.usuario_actual
     email = usuario.get("email")
