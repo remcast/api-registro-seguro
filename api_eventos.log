@@ -1,0 +1,26 @@
+[2026-04-06 20:48:46] | [INFO] | [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+[2026-04-06 20:48:46] | [INFO] | [33mPress CTRL+C to quit[0m
+[2026-04-06 20:48:46] | [INFO] |  * Restarting with stat
+[2026-04-06 20:48:47] | [WARNING] |  * Debugger is active!
+[2026-04-06 20:48:47] | [INFO] |  * Debugger PIN: 473-581-338
+[2026-04-06 20:56:59] | [DEBUG] | Petición POST en /registro. Email recibido: log_test@evaluacion.com
+[2026-04-06 20:56:59] | [INFO] | 127.0.0.1 - - [06/Apr/2026 20:56:59] "[31m[1mPOST /registro HTTP/1.1[0m" 400 -
+[2026-04-06 20:57:21] | [INFO] | [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+[2026-04-06 20:57:21] | [INFO] | [33mPress CTRL+C to quit[0m
+[2026-04-06 20:57:21] | [INFO] |  * Restarting with stat
+[2026-04-06 20:57:22] | [WARNING] |  * Debugger is active!
+[2026-04-06 20:57:22] | [INFO] |  * Debugger PIN: 473-581-338
+[2026-04-06 20:57:43] | [DEBUG] | Petición POST en /registro. Email recibido: log_test@evaluacion.com
+[2026-04-06 20:57:43] | [INFO] | Nuevo usuario creado correctamente: log_test@evaluacion.com
+[2026-04-06 20:57:43] | [INFO] | 127.0.0.1 - - [06/Apr/2026 20:57:43] "[35m[1mPOST /registro HTTP/1.1[0m" 201 -
+[2026-04-06 21:00:01] | [WARNING] | Fallo de login: Credenciales incorrectas para log_test@evaluacion.com
+[2026-04-06 21:00:01] | [INFO] | 127.0.0.1 - - [06/Apr/2026 21:00:01] "[31m[1mPOST /validar HTTP/1.1[0m" 401 -
+[2026-04-06 21:00:27] | [INFO] | Validar login: Credenciales correctas para log_test@evaluacion.com
+[2026-04-06 21:00:27] | [INFO] | 127.0.0.1 - - [06/Apr/2026 21:00:27] "POST /validar HTTP/1.1" 200 -
+[2026-04-06 21:01:10] | [INFO] | 127.0.0.1 - - [06/Apr/2026 21:01:10] "[31m[1mPOST /publicar_articulo HTTP/1.1[0m" 401 -
+[2026-04-06 21:06:51] | [INFO] | Validar login: Credenciales correctas para log_test@evaluacion.com
+[2026-04-06 21:06:51] | [INFO] | 127.0.0.1 - - [06/Apr/2026 21:06:51] "POST /validar HTTP/1.1" 200 -
+[2026-04-06 21:08:10] | [ERROR] | ALERTA DE SEGURIDAD: Inyección HTML detectada en publicación de log_test@evaluacion.com.
+[2026-04-06 21:08:10] | [INFO] | 127.0.0.1 - - [06/Apr/2026 21:08:10] "[31m[1mPOST /publicar_articulo HTTP/1.1[0m" 400 -

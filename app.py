@@ -5,19 +5,27 @@ from functools import wraps
 import jwt
 from datetime import datetime, timedelta
 import re
+import logging # <-- 1. Importamos la librería nativa
 
-# 1. Importamos las variables seguras desde config.py
 from config import SECRET_KEY, JWT_ALGORITHM, DATABASE_PATH
 
 app = Flask(__name__)
 
-# Función auxiliar para conectar a la BD
+# CONFIGURACIÓN DEL MOTOR DE LOGS (Cumple: Archivo Físico y Formato Exacto)
+logging.basicConfig(
+    filename='api_eventos.log', # Aquí se guardará físicamente
+    level=logging.DEBUG,
+    format='[%(asctime)s] | [%(levelname)s] | %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
+
+
 def get_db_connection():
     conn = sqlite3.connect(DATABASE_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
-# INFO "Nuevo usuario creado correctamente"
 @app.route('/registro', methods=['POST'])
 def registro():
     try:
@@ -25,23 +33,26 @@ def registro():
         email = data.get('email')
         password = data.get('password')
 
+        # DEBUG: Rastro técnico inicial
+        logger.debug(f"Petición POST en /registro. Email recibido: {email}")
+
         if not email or not password:
             return jsonify({"error": "Faltan datos"}), 400
 
-        # Validación de Formato de Email
         patron_correo = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
         if not re.match(patron_correo, email):
             return jsonify({"error": "El formato del correo electrónico no es válido"}), 400
 
-        # Validación de Longitud (Entre 8 y 10 caracteres)
         if len(password) < 8 or len(password) > 10:
             return jsonify({"error": "La contraseña debe tener al menos 8 y no mayor a 10 caracteres"}), 400
 
-        conn = get_db_connection() #CRTICAL "ERROR DEL SERVIDOR"
+        conn = get_db_connection() 
         cursor = conn.cursor()
-# WARNING "Registro fallido"
+
         cursor.execute("SELECT id FROM usuarios WHERE email = ?", (email,))
         if cursor.fetchone():
+            # WARNING: Registro fallido por duplicado
+            logger.warning(f"Registro fallido: El usuario {email} ya existe.")
             conn.close()
             return jsonify({"error": "El usuario ya existe"}), 409
 
@@ -54,11 +65,15 @@ def registro():
         conn.commit()
         conn.close()
 
+        # INFO: Nuevo usuario creado correctamente
+        logger.info(f"Nuevo usuario creado correctamente: {email}")
         return jsonify({"mensaje": "Usuario Registrado"}), 201
 
     except Exception as e:
+        # CRITICAL: Error del servidor
+        logger.critical(f"ERROR DEL SERVIDOR en /registro: {str(e)}")
         return jsonify({"error": f"Error del servidor: {str(e)}"}), 500
-# INFO "Actualizacion de contraseña"
+
 @app.route('/cambiar-contrasena', methods=['PUT'])
 def cambiar_contrasena():
     try:
@@ -70,7 +85,6 @@ def cambiar_contrasena():
         if not email or not password_actual or not password_nueva:
             return jsonify({"error": "Faltan datos"}), 400
 
-        # Validación de Longitud (Entre 8 y 10 caracteres)
         if len(password_nueva) < 8 or len(password_nueva) > 10:
             return jsonify({"error": "La nueva contraseña debe tener al menos 8 y no mayor a 10 caracteres"}), 400
 
@@ -96,11 +110,14 @@ def cambiar_contrasena():
         conn.commit()
         conn.close()
 
+        # INFO: Actualización de contraseña
+        logger.info(f"Actualización de contraseña exitosa para: {email}")
         return jsonify({"mensaje": "Contraseña actualizada con éxito"}), 200
 
     except Exception as e:
+        logger.error(f"Error en /cambiar-contrasena: {str(e)}")
         return jsonify({"error": str(e)}), 500
-# INFO "Validar logian"
+
 @app.route('/validar', methods=['POST'])
 def validar_usuario():
     try:
@@ -118,6 +135,8 @@ def validar_usuario():
         usuario = cursor.fetchone()
 
         if not usuario:
+            # WARNING: Fallo de login
+            logger.warning(f"Fallo de login: Usuario no encontrado ({email})")
             conn.close()
             return jsonify({"error": "Usuario no encontrado"}), 404
 
@@ -127,7 +146,6 @@ def validar_usuario():
         if bcrypt.checkpw(password.encode('utf-8'), hash_guardado):
             conn.close()
 
-            # Usamos SECRET_KEY de config.py
             payload = {
                 "email": email,
                 "rol": rol,
@@ -135,15 +153,19 @@ def validar_usuario():
             }
             token = jwt.encode(payload, SECRET_KEY, algorithm=JWT_ALGORITHM)
 
+            # INFO: Validar login
+            logger.info(f"Validar login: Credenciales correctas para {email}")
             return jsonify({"mensaje": "Credenciales válidas", "token": token}), 200
         else:
+            # WARNING: Fallo de login
+            logger.warning(f"Fallo de login: Credenciales incorrectas para {email}")
             conn.close()
-            return jsonify({"error": "Credenciales inválidas"}), 401 #WARNING "Fallo de login"
+            return jsonify({"error": "Credenciales inválidas"}), 401 
 
     except Exception as e:
+        logger.critical(f"Error en validación de usuario: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-# FUNCION PARA PROTEGER RUTAS (Debe ir antes de los endpoints protegidos)
 def requiere_token(f):
     @wraps(f)
     def decorador(*args, **kwargs):
@@ -155,7 +177,6 @@ def requiere_token(f):
         token = auth_header.split(' ')[1]
 
         try:
-            # Usamos SECRET_KEY de config.py
             payload = jwt.decode(token, SECRET_KEY, algorithms=[JWT_ALGORITHM])
             request.usuario_actual = payload
             return f(*args, **kwargs)
@@ -166,7 +187,6 @@ def requiere_token(f):
 
     return decorador
 
-# ENDPOINTS CENTRALES DEL PROYECTO (Compras, Publicar Artículo, Crear Reserva)
 @app.route('/comprar', methods=['POST'])
 @requiere_token
 def comprar():
@@ -175,8 +195,11 @@ def comprar():
     cantidad = data.get('cantidad')
     precio_unitario = 150.0
 
+    usuario = request.usuario_actual
+    email = usuario.get("email")
+
     if not articulo or cantidad is None:
-        return jsonify({"error": "Faltan datos (articulo, cantidad)"}), 400 #WARNING "Compra denegada"
+        return jsonify({"error": "Faltan datos (articulo, cantidad)"}), 400 
 
     if not isinstance(cantidad, int) or cantidad <= 0:
         return jsonify({"error": "La cantidad debe ser un número entero mayor a cero"}), 400
@@ -184,8 +207,6 @@ def comprar():
     if '<' in str(articulo) or '>' in str(articulo):
         return jsonify({"error": "Caracteres no permitidos. Peligro de inyección HTML."}), 400
 
-    usuario = request.usuario_actual
-    email = usuario.get("email")
     costo_total = cantidad * precio_unitario
 
     conn = get_db_connection()
@@ -195,6 +216,8 @@ def comprar():
     row = cursor.fetchone()
 
     if not row or row['saldo'] < costo_total:
+        # WARNING: Compra denegada
+        logger.warning(f"Compra denegada para {email}: Saldo insuficiente.")
         conn.close()
         return jsonify({"error": "Saldo insuficiente para esta compra o usuario no encontrado"}), 400
 
@@ -204,6 +227,8 @@ def comprar():
     conn.commit()
     conn.close()
 
+    # INFO: Compra exitosa
+    logger.info(f"Compra exitosa de {cantidad} {articulo}(s) por {email}.")
     return jsonify({"mensaje": f"Compra exitosa de {cantidad} {articulo}(s).", "saldo_restante": nuevo_saldo}), 200
 
 @app.route('/publicar_articulo', methods=['POST'])
@@ -213,15 +238,17 @@ def publicar_articulo():
     titulo = data.get('titulo')
     contenido = data.get('contenido')
 
+    usuario = request.usuario_actual
+    email = usuario.get("email")
+
     if not titulo or not contenido:
         return jsonify({"error": "Faltan datos (titulo, contenido)"}), 400
 
     patron_html = re.compile(r'<[^>]+>')
     if patron_html.search(titulo) or patron_html.search(contenido):
-        return jsonify({"error": "No se permiten etiquetas HTML por seguridad."}), 400 #ERROR(Seguridad)
-
-    usuario = request.usuario_actual
-    email = usuario.get("email")
+        # ERROR(Seguridad)
+        logger.error(f"ALERTA DE SEGURIDAD: Inyección HTML detectada en publicación de {email}.")
+        return jsonify({"error": "No se permiten etiquetas HTML por seguridad."}), 400 
 
     conn = get_db_connection()
     cursor = conn.cursor()
